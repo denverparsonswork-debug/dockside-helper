@@ -5,8 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import AutocompleteInput from "./AutocompleteInput";
 import { X } from "lucide-react";
 import { z } from "zod";
 
@@ -168,44 +168,37 @@ const CustomerForm = ({ customer, onClose }: CustomerFormProps) => {
 
           <div className="space-y-2">
             <Label htmlFor="truck">Truck Type</Label>
-            <Select
+            <AutocompleteInput
+              id="truck"
               value={formData.truck}
-              onValueChange={(value) => setFormData({ ...formData, truck: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select truck type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Box Truck">Box Truck</SelectItem>
-                <SelectItem value="Semi Truck">Semi Truck</SelectItem>
-              </SelectContent>
-            </Select>
+              onChange={(value) => setFormData({ ...formData, truck: value })}
+              table="customers"
+              column="truck"
+              placeholder="Enter truck type"
+            />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="route">Route</Label>
-            <Select
+            <AutocompleteInput
+              id="route"
               value={formData.route}
-              onValueChange={(value) => setFormData({ ...formData, route: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select route" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="North">North</SelectItem>
-                <SelectItem value="East">East</SelectItem>
-                <SelectItem value="South">South</SelectItem>
-                <SelectItem value="West">West</SelectItem>
-              </SelectContent>
-            </Select>
+              onChange={(value) => setFormData({ ...formData, route: value })}
+              table="customers"
+              column="route"
+              placeholder="Enter route"
+            />
           </div>
 
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="dock_location">Dock Location</Label>
-            <Input
+            <AutocompleteInput
               id="dock_location"
               value={formData.dock_location}
-              onChange={(e) => setFormData({ ...formData, dock_location: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, dock_location: value })}
+              table="customers"
+              column="dock_location"
+              placeholder="Enter dock location"
             />
           </div>
 
