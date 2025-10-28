@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LogOut, Plus } from "lucide-react";
 import CustomerForm from "@/components/CustomerForm";
 import CustomerList from "@/components/CustomerList";
+import DriverManagement from "@/components/DriverManagement";
 
 interface Customer {
   id: string;
@@ -139,6 +140,8 @@ const AdminDashboard = () => {
             Logout
           </Button>
         </div>
+
+        <DriverManagement />
 
         <div className="mb-6">
           <Button onClick={() => setShowForm(true)} size="lg">
