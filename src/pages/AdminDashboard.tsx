@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Plus } from "lucide-react";
+import { LogOut, Plus, Eye } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CustomerForm from "@/components/CustomerForm";
 import CustomerList from "@/components/CustomerList";
-import DriverManagement from "@/components/DriverManagement";
+import DriverList from "@/components/DriverList";
 
 interface Customer {
   id: string;
@@ -135,34 +136,51 @@ const AdminDashboard = () => {
               Manage customer delivery information
             </p>
           </div>
-          <Button onClick={handleLogout} variant="outline">
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate("/driver")} variant="outline">
+              <Eye className="mr-2 h-4 w-4" />
+              View as Driver
+            </Button>
+            <Button onClick={handleLogout} variant="outline">
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
 
-        <DriverManagement />
+        <Tabs defaultValue="customers" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="customers">Customers</TabsTrigger>
+            <TabsTrigger value="drivers">Drivers</TabsTrigger>
+          </TabsList>
 
-        <div className="mb-6">
-          <Button onClick={() => setShowForm(true)} size="lg">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Customer
-          </Button>
-        </div>
+          <TabsContent value="customers" className="space-y-6">
+            <div className="mb-6">
+              <Button onClick={() => setShowForm(true)} size="lg">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Customer
+              </Button>
+            </div>
 
-        {showForm && (
-          <CustomerForm
-            customer={editingCustomer}
-            onClose={handleFormClose}
-          />
-        )}
+            {showForm && (
+              <CustomerForm
+                customer={editingCustomer}
+                onClose={handleFormClose}
+              />
+            )}
 
-        <CustomerList
-          customers={customers}
-          isLoading={isLoading}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+            <CustomerList
+              customers={customers}
+              isLoading={isLoading}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          </TabsContent>
+
+          <TabsContent value="drivers">
+            <DriverList />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

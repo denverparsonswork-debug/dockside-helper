@@ -20,6 +20,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/driver" element={<Driver />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/admin" element={<Auth />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

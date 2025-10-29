@@ -39,18 +39,18 @@ const Landing = () => {
 
           <Card 
             className="p-8 hover:shadow-lg transition-all cursor-pointer border-2 hover:border-accent"
-            onClick={() => navigate("/admin")}
+            onClick={() => navigate("/auth")}
           >
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center">
                 <UserCog className="w-10 h-10 text-accent" />
               </div>
-              <h2 className="text-2xl font-semibold text-foreground">Admin</h2>
+              <h2 className="text-2xl font-semibold text-foreground">Login</h2>
               <p className="text-muted-foreground">
-                Manage customer database and settings
+                Sign in to access your account
               </p>
               <Button variant="secondary" className="w-full" size="lg">
-                Admin Login
+                Sign In
               </Button>
             </div>
           </Card>
