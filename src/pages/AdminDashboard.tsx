@@ -3,8 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Plus, Eye } from "lucide-react";
+import { LogOut, Plus, Eye, ShieldAlert } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import CustomerForm from "@/components/CustomerForm";
 import CustomerList from "@/components/CustomerList";
 import DriverList from "@/components/DriverList";
@@ -120,6 +132,36 @@ const AdminDashboard = () => {
     fetchCustomers();
   };
 
+  const handleForceRelogin = async () => {
+    try {
+      // Get all users and sign them out
+      const { data } = await supabase.auth.admin.listUsers();
+      
+      if (data?.users) {
+        for (const user of data.users) {
+          await supabase.auth.admin.signOut(user.id, 'global');
+        }
+      }
+
+      toast({
+        title: "Success",
+        description: "All users have been signed out. You will now be redirected to login.",
+      });
+
+      // Sign out current admin and redirect
+      setTimeout(async () => {
+        await supabase.auth.signOut();
+        navigate("/auth");
+      }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to sign out all users",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!isAdmin) {
     return null;
   }
@@ -152,6 +194,7 @@ const AdminDashboard = () => {
           <TabsList>
             <TabsTrigger value="customers">Customers</TabsTrigger>
             <TabsTrigger value="drivers">Drivers</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="customers" className="space-y-6">
@@ -179,6 +222,55 @@ const AdminDashboard = () => {
 
           <TabsContent value="drivers">
             <DriverList />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <Card className="p-6">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Security Settings</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Manage system-wide security settings
+                  </p>
+                </div>
+
+                <div className="border border-destructive/50 rounded-lg p-4 bg-destructive/5">
+                  <div className="flex items-start gap-3">
+                    <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-foreground mb-1">
+                        Force All Users to Re-login
+                      </h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        This will immediately sign out all users (including yourself) and require everyone to log in again. Use this in case of security concerns.
+                      </p>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <ShieldAlert className="mr-2 h-4 w-4" />
+                            Force All Users to Re-login
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will sign out ALL users including yourself. Everyone will need to log in again with their credentials and complete 2FA verification.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleForceRelogin} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Yes, Sign Out Everyone
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
