@@ -109,27 +109,60 @@ const Auth = () => {
     }
   };
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+const handle2FAVerification = async () => {
+  setIsLoading(true);
+  console.log("Starting 2FA verification");
+  
+  try {
+    // Get the current session to include auth token
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    const { data, error } = await supabase.functions.invoke("verify-2fa-code", {
+      body: { email: currentUserEmail, code: twoFactorCode },
+      headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined
+    });
 
-    try {
-      const validatedData = authSchema.parse({ email, password });
+    console.log("2FA verification response:", data);
+    console.log("2FA verification error:", error);
 
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: validatedData.email,
-        password: validatedData.password,
+    if (error || !data?.success) {
+      toast({
+        title: "Error",
+        description: error?.message || data?.error || "Invalid verification code",
+        variant: "destructive",
       });
+      setIsLoading(false);
+      return;
+    }
 
-      if (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
+    console.log("2FA verified successfully");
+    
+    // Hide 2FA form
+    setShow2FA(false);
+    console.log("Set show2FA to false");
+    
+    if (session) {
+      console.log("Session found, redirecting...");
+      await checkRoleAndRedirect(session.user.id);
+    } else {
+      console.log("No session found!");
+    }
+    
+    toast({
+      title: "Success",
+      description: "You have been successfully logged in",
+    });
+  } catch (error: any) {
+    console.error("2FA verification error:", error);
+    toast({
+      title: "Error",
+      description: error.message || "An error occurred during verification",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
       if (authData.user) {
         const codeSent = await request2FACode(validatedData.email);
