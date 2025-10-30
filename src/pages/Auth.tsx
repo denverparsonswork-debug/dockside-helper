@@ -19,11 +19,9 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [show2FA, setShow2FA] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState("");
-  const [generatedCode, setGeneratedCode] = useState("");
-  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -47,38 +45,49 @@ const Auth = () => {
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId)
-      .single();
+      .eq("user_id", userId);
 
-    if (roleData?.role === "admin") {
-      navigate("/admin/dashboard");
-    } else if (roleData?.role === "driver") {
-      navigate("/driver");
+    if (roleData && roleData.length > 0) {
+      const role = roleData[0].role;
+      if (role === "admin") {
+        navigate("/admin");
+      } else if (role === "driver") {
+        navigate("/driver");
+      }
     }
   };
 
-  const generateAndSend2FACode = async (email: string) => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(code);
-
+  const request2FACode = async (email: string) => {
     try {
-      const { error } = await supabase.functions.invoke("send-2fa-code", {
-        body: { email, code },
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke("request-2fa-code", {
+        body: { email },
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined
       });
 
-      if (error) throw error;
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to send verification code. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
 
+      setCurrentUserEmail(email);
       toast({
-        title: "Verification Code Sent",
-        description: "Check your email for the 6-digit code.",
+        title: "Code Sent",
+        description: "A verification code has been sent to your email.",
       });
+      return true;
     } catch (error) {
-      console.error("Error sending 2FA code:", error);
       toast({
         title: "Error",
         description: "Failed to send verification code. Please try again.",
         variant: "destructive",
       });
+      return false;
     }
   };
 
@@ -89,67 +98,71 @@ const Auth = () => {
     try {
       const validatedData = authSchema.parse({ email, password });
 
-      if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email: validatedData.email,
-          password: validatedData.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-          },
-        });
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: validatedData.email,
+        password: validatedData.password,
+      });
 
-        if (error) throw error;
-
-        toast({
-          title: "Success!",
-          description: "Account created. You can now sign in.",
-        });
-        setIsSignUp(false);
-      } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: validatedData.email,
-          password: validatedData.password,
-        });
-
-        if (error) throw error;
-
-        if (data.user) {
-          setPendingUserId(data.user.id);
-          await generateAndSend2FACode(validatedData.email);
-          setShow2FA(true);
-        }
-      }
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        toast({
-          title: "Validation Error",
-          description: error.errors[0].message,
-          variant: "destructive",
-        });
-      } else if (error instanceof Error) {
+      if (error) {
         toast({
           title: "Error",
           description: error.message,
           variant: "destructive",
         });
+        setIsLoading(false);
+        return;
       }
+
+      if (authData.user) {
+        const codeSent = await request2FACode(validatedData.email);
+        if (codeSent) {
+          setShow2FA(true);
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred during authentication",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const handle2FAVerification = async () => {
-    if (twoFactorCode !== generatedCode) {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-2fa-code", {
+        body: { email: currentUserEmail, code: twoFactorCode }
+      });
+
+      if (error || !data?.success) {
+        toast({
+          title: "Error",
+          description: error?.message || data?.error || "Invalid verification code",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await checkRoleAndRedirect(user.id);
+        toast({
+          title: "Welcome!",
+          description: "You have successfully logged in.",
+        });
+      }
+    } catch (error: any) {
       toast({
-        title: "Invalid Code",
-        description: "The verification code you entered is incorrect.",
+        title: "Error",
+        description: "Failed to verify code. Please try again.",
         variant: "destructive",
       });
-      return;
-    }
-
-    if (pendingUserId) {
-      await checkRoleAndRedirect(pendingUserId);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -185,16 +198,17 @@ const Auth = () => {
             <Button
               onClick={handle2FAVerification}
               className="w-full"
-              disabled={twoFactorCode.length !== 6}
+              disabled={twoFactorCode.length !== 6 || isLoading}
             >
-              Verify Code
+              {isLoading ? "Verifying..." : "Verify Code"}
             </Button>
 
             <Button
               variant="link"
               onClick={async () => {
-                await generateAndSend2FACode(email);
+                await request2FACode(currentUserEmail);
               }}
+              disabled={isLoading}
             >
               Resend Code
             </Button>
@@ -218,10 +232,10 @@ const Auth = () => {
 
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            {isSignUp ? "Sign Up" : "Login"}
+            Login
           </h1>
           <p className="text-muted-foreground">
-            {isSignUp ? "Create an account" : "Sign in to your account"}
+            Sign in to your account
           </p>
         </div>
 
@@ -255,18 +269,9 @@ const Auth = () => {
             className="w-full"
             disabled={isLoading}
           >
-            {isLoading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
+            {isLoading ? "Loading..." : "Sign In"}
           </Button>
         </form>
-
-        <div className="mt-6 text-center">
-          <Button
-            variant="link"
-            onClick={() => setIsSignUp(!isSignUp)}
-          >
-            {isSignUp ? "Already have an account? Sign in" : "Need an account? Sign up"}
-          </Button>
-        </div>
       </Card>
     </div>
   );

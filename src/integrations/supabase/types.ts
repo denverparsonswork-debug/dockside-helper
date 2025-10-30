@@ -53,6 +53,27 @@ export type Database = {
         }
         Relationships: []
       }
+      failed_login_attempts: {
+        Row: {
+          attempt_time: string
+          created_at: string
+          id: string
+          identifier: string
+        }
+        Insert: {
+          attempt_time?: string
+          created_at?: string
+          id?: string
+          identifier: string
+        }
+        Update: {
+          attempt_time?: string
+          created_at?: string
+          id?: string
+          identifier?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -68,6 +89,33 @@ export type Database = {
           created_at?: string | null
           id?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      two_factor_codes: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          used: boolean
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          used?: boolean
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          used?: boolean
+          user_id?: string
         }
         Relationships: []
       }
@@ -94,6 +142,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_2fa_codes: { Args: never; Returns: undefined }
+      cleanup_old_failed_attempts: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

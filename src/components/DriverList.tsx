@@ -70,8 +70,7 @@ const DriverList = () => {
 
         setDrivers(driversWithProfiles);
       }
-    } catch (error) {
-      console.error("Error fetching drivers:", error);
+    } catch (error: any) {
       toast({
         title: "Error",
         description: "Failed to load drivers",
@@ -85,27 +84,33 @@ const DriverList = () => {
     setIsLoading(true);
 
     try {
-      const { data: authData, error: signUpError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password,
-        email_confirm: true,
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to create drivers",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("admin-create-user", {
+        body: {
+          email: formData.email,
+          password: formData.password,
+          username: formData.username || undefined,
+          role: "driver"
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
-      if (signUpError) throw signUpError;
-
-      const userId = authData.user.id;
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert([{ id: userId, username: formData.username }]);
-
-      if (profileError) throw profileError;
-
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert([{ user_id: userId, role: "driver" }]);
-
-      if (roleError) throw roleError;
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || "Failed to create driver");
+      }
 
       toast({
         title: "Success",
@@ -118,7 +123,7 @@ const DriverList = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to create driver account",
         variant: "destructive",
       });
     } finally {
@@ -133,41 +138,45 @@ const DriverList = () => {
     setIsLoading(true);
 
     try {
-      if (formData.email !== editingDriver.email) {
-        const { error: emailError } = await supabase.auth.admin.updateUserById(
-          editingDriver.id,
-          { email: formData.email }
-        );
-        if (emailError) throw emailError;
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to update drivers",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
 
-      if (formData.password) {
-        const { error: passwordError } = await supabase.auth.admin.updateUserById(
-          editingDriver.id,
-          { password: formData.password }
-        );
-        if (passwordError) throw passwordError;
+      const { data, error } = await supabase.functions.invoke("admin-update-user", {
+        body: {
+          userId: editingDriver.id,
+          email: formData.email !== editingDriver.email ? formData.email : undefined,
+          password: formData.password || undefined,
+          username: formData.username
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || "Failed to update driver");
       }
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({ username: formData.username })
-        .eq("id", editingDriver.id);
-
-      if (profileError) throw profileError;
 
       toast({
         title: "Success",
-        description: "Driver updated successfully",
+        description: "Driver account updated successfully",
       });
 
-      setEditingDriver(null);
-      setFormData({ email: "", password: "", username: "" });
+      cancelEdit();
       fetchDrivers();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to update driver account",
         variant: "destructive",
       });
     } finally {
@@ -179,9 +188,27 @@ const DriverList = () => {
     if (!deleteDriver) return;
 
     try {
-      const { error } = await supabase.auth.admin.deleteUser(deleteDriver.id);
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (error) throw error;
+      if (!session) {
+        toast({
+          title: "Error",
+          description: "You must be logged in to delete drivers",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+        body: { userId: deleteDriver.id },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
+      if (error || !data?.success) {
+        throw new Error(error?.message || data?.error || "Failed to delete driver");
+      }
 
       toast({
         title: "Success",
@@ -193,7 +220,7 @@ const DriverList = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to delete driver account",
         variant: "destructive",
       });
     }
