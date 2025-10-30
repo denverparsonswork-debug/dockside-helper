@@ -61,7 +61,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Get user by email
-    const { data: { users }, error: userError } = await supabase.auth.admin.listUsers();
+const { error } = await supabase.functions.invoke("request-2fa", {
     
     if (userError) {
       console.error("Error fetching users:", userError.message);
