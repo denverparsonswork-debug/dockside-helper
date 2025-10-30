@@ -149,20 +149,28 @@ const Auth = () => {
 
        setShow2FA(false);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await checkRoleAndRedirect(user.id);
-        toast({
-          title: "Welcome!",
-          description: "You have successfully logged in.",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to verify code. Please try again.",
-        variant: "destructive",
-      });
+const checkRoleAndRedirect = async (userId: string) => {
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .single();
+
+  if (roleData?.role === "admin") {
+    navigate("/admin/dashboard");
+  } else if (roleData?.role === "driver") {
+    navigate("/driver");
+  } else {
+    // No role found - redirect somewhere or show error
+    console.log("No role found for user:", userId);
+    toast({
+      title: "No Role Assigned",
+      description: "Please contact an administrator to assign your role.",
+      variant: "destructive",
+    });
+    navigate("/"); // Send them back to landing page
+  }
+};
     } finally {
       setIsLoading(false);
     }
