@@ -42,16 +42,25 @@ const Auth = () => {
   }, [navigate, show2FA]);
 
   const checkRoleAndRedirect = async (userId: string) => {
-    const { data: roleData } = await supabase
+    console.log("Checking role for user:", userId);
+    
+    const { data: roleData, error } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
 
+    console.log("Role data:", roleData);
+    console.log("Role error:", error);
+
     if (roleData && roleData.length > 0) {
       const role = roleData[0].role;
+      console.log("User role:", role);
+      
       if (role === "admin") {
-        navigate("/admin");
+        console.log("Navigating to /admin/dashboard");
+        navigate("/admin/dashboard");
       } else if (role === "driver") {
+        console.log("Navigating to /driver");
         navigate("/driver");
       }
     } else {
@@ -141,10 +150,15 @@ const Auth = () => {
 
   const handle2FAVerification = async () => {
     setIsLoading(true);
+    console.log("Starting 2FA verification");
+    
     try {
       const { data, error } = await supabase.functions.invoke("verify-2fa-code", {
         body: { email: currentUserEmail, code: twoFactorCode }
       });
+
+      console.log("2FA verification response:", data);
+      console.log("2FA verification error:", error);
 
       if (error || !data?.success) {
         toast({
@@ -156,13 +170,21 @@ const Auth = () => {
         return;
       }
 
+      console.log("2FA verified successfully");
+      
       // Hide 2FA form
       setShow2FA(false);
+      console.log("Set show2FA to false");
       
       // Get current session and redirect based on role
       const { data: { session } } = await supabase.auth.getSession();
+      console.log("Current session:", session);
+      
       if (session) {
+        console.log("Session found, redirecting...");
         await checkRoleAndRedirect(session.user.id);
+      } else {
+        console.log("No session found!");
       }
       
       toast({
@@ -170,6 +192,7 @@ const Auth = () => {
         description: "You have been successfully logged in",
       });
     } catch (error: any) {
+      console.error("2FA verification error:", error);
       toast({
         title: "Error",
         description: error.message || "An error occurred during verification",
