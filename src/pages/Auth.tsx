@@ -147,6 +147,8 @@ const Auth = () => {
         return;
       }
 
+       setShow2FA(false);
+
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await checkRoleAndRedirect(user.id);
