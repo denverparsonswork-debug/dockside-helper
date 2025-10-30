@@ -54,6 +54,15 @@ const Auth = () => {
       } else if (role === "driver") {
         navigate("/driver");
       }
+    } else {
+      // No role found
+      console.log("No role found for user:", userId);
+      toast({
+        title: "No Role Assigned",
+        description: "Please contact an administrator to assign your role.",
+        variant: "destructive",
+      });
+      navigate("/");
     }
   };
 
@@ -147,30 +156,25 @@ const Auth = () => {
         return;
       }
 
-       setShow2FA(false);
-
-const checkRoleAndRedirect = async (userId: string) => {
-  const { data: roleData } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .single();
-
-  if (roleData?.role === "admin") {
-    navigate("/admin/dashboard");
-  } else if (roleData?.role === "driver") {
-    navigate("/driver");
-  } else {
-    // No role found - redirect somewhere or show error
-    console.log("No role found for user:", userId);
-    toast({
-      title: "No Role Assigned",
-      description: "Please contact an administrator to assign your role.",
-      variant: "destructive",
-    });
-    navigate("/"); // Send them back to landing page
-  }
-};
+      // Hide 2FA form
+      setShow2FA(false);
+      
+      // Get current session and redirect based on role
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await checkRoleAndRedirect(session.user.id);
+      }
+      
+      toast({
+        title: "Success",
+        description: "You have been successfully logged in",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred during verification",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
